@@ -151,7 +151,7 @@
 				</span>
 			</button>
 		{:else}
-			<div data-grid class="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-2">
+			<div data-grid class="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-2">
 				{#each picks as item (item.id)}
 					{@const round = item.kind === 'artist'}
 					{@const onRepeat = item.id === ON_REPEAT_ID}
@@ -162,7 +162,7 @@
 							<div class="absolute -left-1 bottom-0 top-0 z-20 w-0.5 rounded-full bg-primary"></div>
 						{/if}
 						<div
-							class="flex h-16 cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-foreground/5 text-left transition-colors hover:bg-foreground/10"
+							class="flex h-14 sm:h-16 cursor-pointer items-center gap-2 sm:gap-3 overflow-hidden rounded-lg sm:rounded-xl bg-foreground/5 text-left transition-all hover:bg-foreground/10 active:scale-[0.98]"
 							role="button"
 							tabindex="0"
 							draggable="true"
@@ -182,8 +182,8 @@
 							     no reserved gutter, and it puts the action where the eye already is. -->
 							<div
 								class="relative shrink-0 overflow-hidden bg-muted {round
-									? 'my-2 ml-2 h-12 w-12 rounded-full'
-									: 'h-16 w-16'}"
+									? 'my-1.5 ml-1.5 h-11 w-11 rounded-full sm:my-2 sm:ml-2 sm:h-12 sm:w-12'
+									: 'h-14 w-14 sm:h-16 sm:w-16'}"
 							>
 								{#if item.thumbnail && !failed[item.thumbnail] && !onRepeat}
 									<img

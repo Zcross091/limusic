@@ -133,7 +133,9 @@
      that don't dismiss it (`onWindowChrome`). -->
 <header
 	data-tauri-drag-region
-	class="pointer-events-auto relative {ui.theaterOpen ? 'z-0' : 'z-50'} flex h-9 shrink-0 select-none items-center justify-between border-b border-border/60 bg-background"
+	class="pointer-events-auto relative {ui.theaterOpen ? 'z-0' : 'z-50'} flex {prefs.isAndroid
+		? 'h-11 pt-[env(safe-area-inset-top,0px)]'
+		: 'h-9'} shrink-0 select-none items-center justify-between border-b border-border/60 bg-background"
 >
 	<span
 		class="pointer-events-none absolute inset-x-0 text-center text-xs font-medium tracking-wide text-muted-foreground"
@@ -346,6 +348,16 @@
 				<!-- The system frame owns closing; leave a little air before its own buttons. -->
 				<div class="w-2"></div>
 			{/if}
+		{#if prefs.isAndroid}
+			<button
+				class="flex h-full w-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground active:scale-95"
+				onclick={() => (ui.settingsOpen = true)}
+				title={t('nav.settings')}
+				aria-label={t('nav.settings')}
+			>
+				<HugeiconsIcon icon={Settings02Icon} class="h-4 w-4" />
+			</button>
+			<div class="w-1"></div>
 		{:else}
 			<div class="w-2"></div>
 		{/if}

@@ -29,6 +29,7 @@
 	import { blockForeignDrag, dragScroll } from '$lib/dnd';
 	import { suppressNative } from '$lib/menu';
 	import Sidebar from '$lib/components/Sidebar.svelte';
+	import BottomNav from '$lib/components/BottomNav.svelte';
 	import Titlebar from '$lib/components/Titlebar.svelte';
 	import ResizeBorders from '$lib/components/ResizeBorders.svelte';
 	import PlayerBar from '$lib/components/PlayerBar.svelte';
@@ -240,11 +241,13 @@
 		<Titlebar />
 		<!-- relative: the queue and lyrics panels are absolute overlays inside it (see QueuePanel). -->
 		<div class="relative flex min-h-0 flex-1">
-			<Sidebar />
+			{#if !prefs.isAndroid}
+				<Sidebar />
+			{/if}
 			<!-- dragScroll: dragging a card up to home's Shortcuts grid has to be possible from anywhere in
 			     the feed, so aiming at the top edge scrolls this container while the drag is in flight. -->
 			<main
-				class="min-w-0 flex-1 overflow-y-auto {video.hole ? 'invisible' : ''}"
+				class="min-w-0 flex-1 overflow-y-auto {prefs.isAndroid ? 'pb-36' : ''} {video.hole ? 'invisible' : ''}"
 				bind:this={scroller}
 				{@attach dragScroll}
 			>
@@ -298,6 +301,9 @@
 					commentsOpen={tabbed ? np.tab === 'comments' : commentsOpen}
 				/>
 			</div>
+		{/if}
+		{#if prefs.isAndroid}
+			<BottomNav />
 		{/if}
 	</div>
 

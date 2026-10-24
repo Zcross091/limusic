@@ -14,6 +14,11 @@
 		MusicNote01Icon,
 		PlayIcon,
 		PauseIcon,
+		PreviousIcon,
+		NextIcon,
+		ShuffleIcon,
+		RepeatIcon,
+		RepeatOne01Icon,
 		Queue01Icon,
 		Video01Icon,
 		VideoOffIcon,
@@ -179,6 +184,28 @@
 		if (playback.rating !== 'like') justLiked = true;
 		toggleNowPlayingRating();
 	}
+
+	const fmt = (secs: number) => {
+		if (!secs || secs < 0) return '0:00';
+		const t = Math.floor(secs);
+		const m = Math.floor(t / 60);
+		const s = t % 60;
+		return `${m}:${s.toString().padStart(2, '0')}`;
+	};
+
+	let seekDrag = $state<number | null>(null);
+	const shownPosition = $derived(seekDrag ?? playback.position);
+	function onSeekInput(e: Event) {
+		seekDrag = Number((e.target as HTMLInputElement).value);
+	}
+	function onSeekCommit(e: Event) {
+		const v = Number((e.target as HTMLInputElement).value);
+		playback.position = v;
+		seekDrag = null;
+		api.seek(v);
+	}
+	const shuffleOn = $derived(playback.queue.shuffle ?? false);
+	const repeat = $derived(playback.queue.repeat ?? 'off');
 
 	// Linux: the picture is drawn by mpv underneath the page, and the box below is a hole it shows
 	// through (src-tauri/src/nativevideo.rs). Not while the view flies in or out: the box moves every
@@ -464,11 +491,15 @@
 	onpointerup={(e) => (releasedKeep = keeps(e.target))}
 	onclick={onBackdropClick}
 	data-np-view
-	class="absolute inset-y-0 left-16 right-0 z-20 flex overflow-hidden inert:bg-background {video.hole
+	class="absolute inset-y-0 {prefs.isAndroid
+		? 'left-0 z-50 pt-[max(env(safe-area-inset-top,0px),8px)] pb-[max(env(safe-area-inset-bottom,0px),16px)]'
+		: 'left-16 z-20'} right-0 flex overflow-hidden inert:bg-background {video.hole
 		? ''
-		: 'bg-background'} {stage ? '' : 'justify-center px-4 py-4 sm:px-6 sm:py-6 lg:px-10'} {ui.sidebarCollapsed
+		: 'bg-background'} {stage ? '' : 'justify-center px-4 py-4 sm:px-6 sm:py-6 lg:px-10'} {prefs.isAndroid
 		? ''
-		: 'lg:left-60'} {inset}"
+		: ui.sidebarCollapsed
+			? ''
+			: 'lg:left-60'} {inset}"
 >
 	<!-- The ambient light (Settings > Video): the video's colours spilling into the view around it. Not
 	     under theater mode, which covers this view. -->
@@ -647,8 +678,117 @@
 										triggerClass="flex size-10 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
 									/>
 								{/if}
-							</div>
 						</div>
+
+						{#if prefs.isAndroid}
+							<!-- Spotify Mobile Progress & Transport Controls -->
+							<div class="mt-4 flex w-full flex-col gap-2" data-np-keep>
+								<!-- Seek scrubber -->
+								<div class="flex flex-col gap-1">
+									<input
+										type="range"
+										class="range w-full cursor-pointer"
+										style="--pct:{playback.duration ? (shownPosition / playback.duration) * 100 : 0}%"
+										min="0"
+										max={playback.duration || 0}
+										value={shownPosition}
+										oninput={onSeekInput}
+										onchange={onSeekCommit}
+										aria-label={t('player.seek')}
+									/>
+									<div class="flex justify-between text-[11px] font-medium text-muted-foreground tabular-nums">
+										<span>{fmt(shownPosition)}</span>
+										<span>{fmt(playback.duration)}</span>
+									</div>
+								</div>
+
+								<!-- Transport controls -->
+								<div class="mt-2 flex items-center justify-between px-2">
+									<button
+										type="button"
+										onclick={() => api.toggleShuffle()}
+										class="flex size-9 items-center justify-center transition-transform active:scale-90"
+										aria-label={t('player.shuffle')}
+									>
+										<HugeiconsIcon
+											icon={ShuffleIcon}
+											class="size-5 transition-colors {shuffleOn ? 'text-[#1db954]' : 'text-muted-foreground'}"
+										/>
+									</button>
+
+									<button
+										type="button"
+										onclick={() => api.prevTrack()}
+										class="flex size-11 items-center justify-center text-foreground transition-transform active:scale-90"
+										aria-label={t('player.previous')}
+									>
+										<HugeiconsIcon icon={PreviousIcon} class="size-7" />
+									</button>
+
+									<!-- Spotify Large Circle Play/Pause -->
+									<button
+										type="button"
+										onclick={() => api.togglePause()}
+										class="flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform active:scale-95"
+										aria-label={playback.paused ? t('player.play') : t('player.pause')}
+									>
+										<HugeiconsIcon
+											icon={PlayIcon}
+											altIcon={PauseIcon}
+											showAlt={!playback.paused}
+											class="size-8 fill-current"
+										/>
+									</button>
+
+									<button
+										type="button"
+										onclick={() => api.nextTrack()}
+										class="flex size-11 items-center justify-center text-foreground transition-transform active:scale-90"
+										aria-label={t('player.next')}
+									>
+										<HugeiconsIcon icon={NextIcon} class="size-7" />
+									</button>
+
+									<button
+										type="button"
+										onclick={() => api.cycleRepeat()}
+										class="flex size-9 items-center justify-center transition-transform active:scale-90"
+										aria-label={t('player.repeat')}
+									>
+										<HugeiconsIcon
+											icon={RepeatIcon}
+											altIcon={RepeatOne01Icon}
+											showAlt={repeat === 'one'}
+											class="size-5 transition-colors {repeat !== 'off' ? 'text-[#1db954]' : 'text-muted-foreground'}"
+										/>
+									</button>
+								</div>
+
+								<!-- Bottom quick sheet switches: Lyrics & Queue -->
+								<div class="mt-2 flex items-center justify-between pt-1">
+									<button
+										type="button"
+										onclick={() => {
+											np.tab = np.tab === 'lyrics' ? 'queue' : 'lyrics';
+										}}
+										class="flex items-center gap-1.5 rounded-full bg-foreground/10 px-3.5 py-1.5 text-xs font-medium text-foreground backdrop-blur-md transition-colors active:scale-95"
+									>
+										<HugeiconsIcon icon={Mic01Icon} class="size-3.5" />
+										{t('player.lyrics')}
+									</button>
+									<button
+										type="button"
+										onclick={() => {
+											np.tab = 'queue';
+										}}
+										class="flex items-center gap-1.5 rounded-full bg-foreground/10 px-3.5 py-1.5 text-xs font-medium text-foreground backdrop-blur-md transition-colors active:scale-95"
+									>
+										<HugeiconsIcon icon={Queue01Icon} class="size-3.5" />
+										{t('player.queue')}
+									</button>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 			</section>

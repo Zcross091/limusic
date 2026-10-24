@@ -138,6 +138,84 @@
 	}
 </script>
 
+{#if prefs.isAndroid}
+	{#if !np.open && playback.now}
+		<!-- Spotify Mobile Floating Mini Player -->
+		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+		<div
+			onpointerdown={(e) => (pressedControl = isControl(e.target))}
+			onclick={onBarClick}
+			class="fixed bottom-[calc(56px+max(env(safe-area-inset-bottom,0px),8px))] left-2.5 right-2.5 z-40 flex cursor-pointer select-none items-center justify-between gap-3 overflow-hidden rounded-xl border border-white/10 bg-[#212121]/95 px-3 py-2 shadow-2xl backdrop-blur-xl transition-all active:scale-[0.99]"
+		>
+			<!-- Left: Album artwork + Title + Artist -->
+			<div class="flex min-w-0 flex-1 items-center gap-2.5">
+				{#if playback.now?.thumbnail}
+					<img
+						src={thumb(playback.now.thumbnail, 96)}
+						alt=""
+						class="size-11 shrink-0 rounded-lg object-cover shadow-sm"
+					/>
+				{:else}
+					<div class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white/50">
+						<HugeiconsIcon icon={MusicNote01Icon} class="size-5" />
+					</div>
+				{/if}
+				<div class="min-w-0 flex-1 pr-1">
+					<div class="truncate text-xs font-semibold text-white">
+						{playback.now?.title ?? t('player.not_playing')}
+					</div>
+					<div class="truncate text-[11px] text-[#b3b3b3]">
+						{playback.now?.artists ?? ''}
+					</div>
+				</div>
+			</div>
+
+			<!-- Right: Spotify Like + Play/Pause button -->
+			<div class="flex items-center gap-1 shrink-0">
+				{#if playback.now && !api.isLocalId(playback.now.videoId)}
+					<button
+						type="button"
+						onclick={(e) => {
+							e.stopPropagation();
+							toggleLike();
+						}}
+						class="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-transform active:scale-90"
+						aria-label={t('common.like')}
+					>
+						<HugeiconsIcon
+							icon={FavouriteIcon}
+							class="size-5 transition-colors {playback.rating === 'like' ? 'fill-[#1db954] text-[#1db954]' : 'text-[#b3b3b3]'}"
+						/>
+					</button>
+				{/if}
+				<button
+					type="button"
+					onclick={(e) => {
+						e.stopPropagation();
+						api.togglePause();
+					}}
+					class="flex size-9 items-center justify-center rounded-full text-white transition-transform active:scale-90"
+					aria-label={playback.paused ? t('player.play') : t('player.pause')}
+				>
+					<HugeiconsIcon
+						icon={PlayIcon}
+						altIcon={PauseIcon}
+						showAlt={!playback.paused}
+						class="size-6 fill-current text-white"
+					/>
+				</button>
+			</div>
+
+			<!-- Spotify 2.5px Progress Line at the bottom -->
+			<div class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white/10">
+				<div
+					class="h-full bg-white transition-[width] duration-300 ease-linear"
+					style="width: {Math.min(100, Math.max(0, (playback.position / (playback.duration || 1)) * 100))}%"
+				></div>
+			</div>
+		</div>
+	{/if}
+{:else}
 <!-- The chevron button below is the keyboard equivalent of clicking the bar, so the bar itself
      stays a plain region rather than becoming a focusable control wrapping every other control. -->
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions, a11y_no_noninteractive_element_interactions -->
@@ -430,3 +508,4 @@
 		</div>
 	</div>
 </footer>
+{/if}
