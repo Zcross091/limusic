@@ -80,6 +80,12 @@ impl Bridge {
     /// failure the just-built window is destroyed so its label can be reused (no orphan
     /// "already exists").
     pub async fn create(app: &AppHandle, label: &str) -> Result<Bridge, Error> {
+        #[cfg(target_os = "android")]
+        {
+            let _ = (app, label);
+            return Err(Error::Build("hidden webviews not supported on Android".into()));
+        }
+
         // Reclaim the label if a prior attempt left an orphan (or a concurrent build raced us).
         destroy_and_wait(app, label).await;
 

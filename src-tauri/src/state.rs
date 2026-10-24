@@ -4747,21 +4747,29 @@ pub fn native_video() -> bool {
 /// realtime; the proxy re-issues it as bounded ranges, which are served at full speed, so both the
 /// first play and every seek start sooner. audioproxy.rs has the numbers and the kill-switch.
 fn mpv_stream_url(data: &PlaybackData) -> String {
-    // A user proxy reaches mpv as `http-proxy` (#241), and ffmpeg would send the loopback request
-    // through it, and it cannot reach our 127.0.0.1, so audio would go silent. Hand mpv the
-    // googlevideo URL instead and let the user's proxy carry it: no chunked proxy, but working
-    // playback. Nothing else is lost, because the proxy's own upstream fetch already goes through
-    // `http::client()`, which is proxied.
-    if crate::http::has_proxy() {
+    #[cfg(target_os = "android")]
+    {
         return data.stream_url.clone();
     }
-    let http = data.stream_url.starts_with("http://") || data.stream_url.starts_with("https://");
-    if http {
-        if let Some(url) = crate::audioproxy::register(&data.stream_url, &data.headers) {
-            return url;
+    #[cfg(not(target_os = "android"))]
+    {
+        // A user proxy reaches mpv as `http-proxy` (#241), and ffmpeg would send the loopback request
+        // through it, and it cannot reach our 127.0.0.1, so audio would go silent. Hand mpv the
+        // googlevideo URL instead and let the user's proxy carry it: no chunked proxy, but working
+        // playback. Nothing else is lost, because the proxy's own upstream fetch already goes through
+        // `http::client()`, which is proxied.
+        if crate::http::has_proxy() {
+            return data.stream_url.clone();
         }
+        let http =
+            data.stream_url.starts_with("http://") || data.stream_url.starts_with("https://");
+        if http {
+            if let Some(url) = crate::audioproxy::register(&data.stream_url, &data.headers) {
+                return url;
+            }
+        }
+        data.stream_url.clone()
     }
-    data.stream_url.clone()
 }
 
 /// Loudness target, matching YouTube Music's own player rather than the video site's -14.

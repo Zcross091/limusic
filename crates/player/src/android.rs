@@ -205,7 +205,12 @@ pub extern "C" fn JNI_OnLoad(vm: *mut std::ffi::c_void, _reserved: *mut std::ffi
 fn with_env<F: FnOnce(&mut jni::JNIEnv) -> jni::errors::Result<()>>(f: F) {
     if let Some(jvm) = JAVA_VM.get() {
         if let Ok(mut env) = jvm.attach_current_thread_permanently() {
-            let _ = f(&mut env);
+            let res = f(&mut env);
+            if env.exception_check().unwrap_or(false) {
+                let _ = env.exception_describe();
+                let _ = env.exception_clear();
+            }
+            let _ = res;
         }
     }
 }

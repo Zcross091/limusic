@@ -12,6 +12,7 @@ object AudioBridge {
     private val handler = Handler(Looper.getMainLooper())
     private var service: AudioService? = null
     private var context: Context? = null
+    private var pendingAction: (() -> Unit)? = null
 
     init {
         try {
@@ -23,10 +24,14 @@ object AudioBridge {
 
     fun attachContext(ctx: Context) {
         context = ctx.applicationContext
+        ensureServiceStarted()
     }
 
     fun attachService(svc: AudioService) {
         service = svc
+        val action = pendingAction
+        pendingAction = null
+        action?.invoke()
     }
 
     fun detachService() {
@@ -37,59 +42,125 @@ object AudioBridge {
 
     @JvmStatic
     fun play() {
-        handler.post { service?.play() }
+        handler.post {
+            try {
+                val svc = service
+                if (svc != null) {
+                    svc.play()
+                } else {
+                    pendingAction = { service?.play() }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in play()", e)
+            }
+        }
     }
 
     @JvmStatic
     fun pause() {
-        handler.post { service?.pause() }
+        handler.post {
+            try {
+                service?.pause()
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in pause()", e)
+            }
+        }
     }
 
     @JvmStatic
     fun stop() {
-        handler.post { service?.stop() }
+        handler.post {
+            try {
+                service?.stop()
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in stop()", e)
+            }
+        }
     }
 
     @JvmStatic
     fun seek(positionSecs: Double) {
-        handler.post { service?.seekTo((positionSecs * 1000).toLong()) }
+        handler.post {
+            try {
+                service?.seekTo((positionSecs * 1000).toLong())
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in seek()", e)
+            }
+        }
     }
 
     @JvmStatic
     fun load(url: String, startSecs: Double, headersJson: String? = null) {
         handler.post {
-            ensureServiceStarted()
-            service?.loadUrl(url, (startSecs * 1000).toLong(), headersJson)
+            try {
+                ensureServiceStarted()
+                val svc = service
+                if (svc != null) {
+                    svc.loadUrl(url, (startSecs * 1000).toLong(), headersJson)
+                } else {
+                    pendingAction = {
+                        service?.loadUrl(url, (startSecs * 1000).toLong(), headersJson)
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in load()", e)
+            }
         }
     }
 
     @JvmStatic
     fun setSpeed(speed: Float) {
-        handler.post { service?.setPlaybackSpeed(speed) }
+        handler.post {
+            try {
+                service?.setPlaybackSpeed(speed)
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in setSpeed()", e)
+            }
+        }
     }
 
     @JvmStatic
     fun setLoop(loop: Boolean) {
-        handler.post { service?.setLoop(loop) }
+        handler.post {
+            try {
+                service?.setLoop(loop)
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in setLoop()", e)
+            }
+        }
     }
 
     @JvmStatic
     fun setMetadata(title: String, artist: String, album: String?, coverUrl: String?) {
-        handler.post { service?.updateMetadata(title, artist, album, coverUrl) }
+        handler.post {
+            try {
+                service?.updateMetadata(title, artist, album, coverUrl)
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in setMetadata()", e)
+            }
+        }
     }
 
     @JvmStatic
     fun setVolume(volumePercent: Int) {
         handler.post {
-            val vol = (volumePercent.coerceIn(0, 100) / 100f)
-            service?.setVolume(vol)
+            try {
+                val vol = (volumePercent.coerceIn(0, 100) / 100f)
+                service?.setVolume(vol)
+            } catch (e: Exception) {
+                android.util.Log.e("AudioBridge", "Error in setVolume()", e)
+            }
         }
     }
 
     private fun ensureServiceStarted() {
         val ctx = context ?: return
-        val intent = Intent(ctx, AudioService::class.java)
-        ctx.startService(intent)
+        try {
+            val intent = Intent(ctx, AudioService::class.java)
+            ctx.startService(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("AudioBridge", "Could not start AudioService: ${e.message}")
+        }
     }
 
     // --- Calls from Android into Rust JNI ---
@@ -107,7 +178,7 @@ object AudioBridge {
     fun onPosition(positionSecs: Double) {
         try {
             nativeOnPosition(positionSecs)
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
             // Handled during pre-initialization or mock runs
         }
     }
@@ -115,56 +186,56 @@ object AudioBridge {
     fun onDuration(durationSecs: Double) {
         try {
             nativeOnDuration(durationSecs)
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
         }
     }
 
     fun onPlaying(playing: Boolean) {
         try {
             nativeOnPlaying(playing)
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
         }
     }
 
     fun onPaused(paused: Boolean) {
         try {
             nativeOnPaused(paused)
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
         }
     }
 
     fun onTrackEnded() {
         try {
             nativeOnTrackEnded()
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
         }
     }
 
     fun onTrackFailed() {
         try {
             nativeOnTrackFailed()
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
         }
     }
 
     fun onNext() {
         try {
             nativeOnNext()
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
         }
     }
 
     fun onPrevious() {
         try {
             nativeOnPrevious()
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
         }
     }
 
     fun onToggle() {
         try {
             nativeOnToggle()
-        } catch (e: UnsatisfiedLinkError) {
+        } catch (e: Throwable) {
         }
     }
 }

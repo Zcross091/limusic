@@ -340,6 +340,9 @@ impl CipherDeobfuscator {
         }
         // Analysis-only caller: record what we learned and stop short of the web process.
         // Discovery stays unset, so the first decipher call falls through to the build below.
+        #[cfg(target_os = "android")]
+        let want_bridge = false;
+
         if !want_bridge {
             let mut inner = self.inner.lock().await;
             if let Some(b) = inner.bridge.take() {
