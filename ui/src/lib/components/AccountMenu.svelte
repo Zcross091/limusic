@@ -16,7 +16,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as api from '$lib/api';
-	import { auth, openChannelPicker, toast } from '$lib/player.svelte';
+	import { auth, openChannelPicker, prefs, toast } from '$lib/player.svelte';
 	import { thumb } from '$lib/thumb';
 	import { anchorMenu, fitMenu, NO_ANCHOR } from '$lib/menu';
 	import { t } from '$lib/i18n.svelte';
@@ -118,6 +118,7 @@
 	}
 </script>
 
+{#if !prefs.isAndroid}
 <button
 	onclick={openMenu}
 	title={auth.account?.signedIn ? (auth.account.name ?? t('nav.account')) : t('nav.sign_in')}
@@ -285,3 +286,4 @@
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
+{/if}

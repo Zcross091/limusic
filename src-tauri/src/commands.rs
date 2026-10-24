@@ -740,10 +740,18 @@ pub async fn remove_google_account(state: St<'_>, id: String) -> Result<(), Stri
 /// already holds a Google session.
 #[tauri::command]
 pub async fn login_webview(state: St<'_>, add_account: Option<bool>) -> Result<(), String> {
-    let state = state.inner().clone();
-    let app = state.app.clone();
-    crate::session::open_login(app, state, add_account.unwrap_or(false));
-    Ok(())
+    #[cfg(target_os = "android")]
+    {
+        let _ = (state, add_account);
+        return Err("Google account sign-in is disabled on Android".into());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let state = state.inner().clone();
+        let app = state.app.clone();
+        crate::session::open_login(app, state, add_account.unwrap_or(false));
+        Ok(())
+    }
 }
 
 /// The current track, play state, position and duration in one shot. Events are the normal

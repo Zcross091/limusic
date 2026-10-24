@@ -16,7 +16,7 @@
 	import type { HistoryGroup, SongItem } from '$lib/api';
 	import { getCached, putCached } from '$lib/pagecache';
 	import { thumb } from '$lib/thumb';
-	import { auth, openAddToPlaylist, openPlayer, playback } from '$lib/player.svelte';
+	import { auth, openAddToPlaylist, openPlayer, playback, prefs } from '$lib/player.svelte';
 	import { t } from '$lib/i18n.svelte';
 
 	const KEY = 'history';
@@ -216,7 +216,7 @@
 			<p class="text-sm text-muted-foreground">
 				{filtering
 					? t('common.no_matches')
-					: auth.account?.signedIn
+					: auth.account?.signedIn || prefs.isAndroid
 						? t('history.empty')
 						: t('history.signed_out')}
 			</p>

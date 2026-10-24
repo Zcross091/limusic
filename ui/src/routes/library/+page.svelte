@@ -39,6 +39,7 @@
 		loadLibraryExtras,
 		loadUploadAlbums,
 		openNewPlaylist,
+		prefs,
 		syncSavedToYouTube
 	} from '$lib/player.svelte';
 	import { mergeSaved, unsynced } from '$lib/personal';
@@ -49,7 +50,11 @@
 
 	// `?tab=local` so anything that sends you back here (an album whose files were deleted) lands
 	// on the tab you came from instead of a sign-in prompt.
-	let tab = $state(page.url.searchParams.get('tab') ?? lastTab);
+	let initialTab = page.url.searchParams.get('tab') ?? lastTab;
+	if (prefs.isAndroid && (initialTab === 'songs' || initialTab === 'uploads')) {
+		initialTab = 'all';
+	}
+	let tab = $state(initialTab);
 	$effect(() => {
 		lastTab = tab;
 	});
@@ -231,12 +236,14 @@
 			<Tabs.Trigger value="artists">
 				<HugeiconsIcon icon={UserSharingIcon} class="h-4 w-4" /> {t('library.artists_tab')}
 			</Tabs.Trigger>
-			<Tabs.Trigger value="songs">
-				<HugeiconsIcon icon={MusicNote01Icon} class="h-4 w-4" /> {t('library.songs_tab')}
-			</Tabs.Trigger>
-			<Tabs.Trigger value="uploads">
-				<HugeiconsIcon icon={CloudUploadIcon} class="h-4 w-4" /> {t('library.uploads_tab')}
-			</Tabs.Trigger>
+			{#if !prefs.isAndroid}
+				<Tabs.Trigger value="songs">
+					<HugeiconsIcon icon={MusicNote01Icon} class="h-4 w-4" /> {t('library.songs_tab')}
+				</Tabs.Trigger>
+				<Tabs.Trigger value="uploads">
+					<HugeiconsIcon icon={CloudUploadIcon} class="h-4 w-4" /> {t('library.uploads_tab')}
+				</Tabs.Trigger>
+			{/if}
 			<Tabs.Trigger value="local">
 				<HugeiconsIcon icon={DriveIcon} class="h-4 w-4" /> {t('library.local_tab')}
 			</Tabs.Trigger>
@@ -331,7 +338,9 @@
 				{#if tab === 'all'}
 					{@render grid(
 						all,
-						signedOut ? t('library.empty_signed_out') : t('library.empty'),
+						signedOut && !prefs.isAndroid
+							? t('library.empty_signed_out')
+							: t('library.empty'),
 						rvAll,
 						true
 					)}

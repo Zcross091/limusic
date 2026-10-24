@@ -61,85 +61,95 @@ const ADD_ACCOUNT_URL: &str =
 /// the `auth-changed` event, or `login-error` on failure). `add_account` picks the AddSession
 /// flow so an additional Google account can be added while another is signed in.
 pub fn open_login(app: AppHandle, state: Arc<AppState>, add_account: bool) {
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<()>();
-
-    // When the webview lands on music.youtube.com, capture cookies + sign in. Runs off the
-    // event-handler thread because reading the cookie store can deadlock when called synchronously
-    // from inside a page-load callback.
+    #[cfg(target_os = "android")]
     {
-        let app = app.clone();
-        tauri::async_runtime::spawn(async move {
-            while rx.recv().await.is_some() {
-                // The redirect that lands us here sets the youtube cookies; they may appear a beat
-                // after the page finishes, so poll briefly.
-                for _ in 0..6 {
-                    let cookie = read_login_cookies(&app, LOGIN_LABEL).await;
-                    if innertube::cookie_sapisid(&cookie).is_some() {
-                        match state.sign_in(cookie, None).await {
-                            Ok(SignInOutcome::Complete) => {
-                                let _ = app.emit("login-done", ());
-                            }
-                            // The authenticated cookie is saved, but the account remains
-                            // deliberately unfinished until the main-window picker selects a
-                            // server-issued delegated identity.
-                            Ok(SignInOutcome::SelectionRequired) => {}
-                            Err(e) => {
-                                let _ = app.emit("login-error", e);
-                            }
-                        }
-                        close_login(&app);
-                        return;
-                    }
-                    tokio::time::sleep(Duration::from_millis(500)).await;
-                }
-                // Landed on music.youtube.com but not authenticated yet — keep watching.
-            }
-        });
+        let _ = (app, state, add_account);
+        return;
     }
 
-    // Window creation must happen on the main thread (GTK).
-    let app2 = app.clone();
-    let dispatched = app.run_on_main_thread(move || {
-        // Reclaim the label if a prior login window is still around.
-        if let Some(w) = app2.get_webview_window(LOGIN_LABEL) {
-            let _ = w.destroy();
-        }
-        // Add-account flow: sign the *webview* out of Google first, so the fresh sign-in is the
-        // webview's only session and music.youtube.com lands on the new account instead of
-        // auto-continuing into whichever one it was already holding. The app's own saved sessions
-        // live in SQLite (`accounts`), not in this cookie store, so they are never touched here.
-        if add_account {
-            if let Err(e) = clear_google_webview_cookies(&app2) {
-                let _ =
-                    app2.emit("login-error", format!("Couldn't clear the previous session: {e}"));
-                return;
-            }
-        }
-        let url = if add_account { ADD_ACCOUNT_URL } else { LOGIN_URL };
-        let Ok(url) = tauri::Url::parse(url) else { return };
-        let builder = WebviewWindowBuilder::new(&app2, LOGIN_LABEL, WebviewUrl::External(url))
-            .title("Sign in to YouTube Music")
-            .inner_size(480.0, 720.0)
-            .on_page_load(move |_w, payload| {
-                if matches!(payload.event(), PageLoadEvent::Finished)
-                    && payload.url().host_str() == Some("music.youtube.com")
-                {
-                    let _ = tx.send(());
+    #[cfg(not(target_os = "android"))]
+    {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<()>();
+
+        // When the webview lands on music.youtube.com, capture cookies + sign in. Runs off the
+        // event-handler thread because reading the cookie store can deadlock when called synchronously
+        // from inside a page-load callback.
+        {
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                while rx.recv().await.is_some() {
+                    // The redirect that lands us here sets the youtube cookies; they may appear a beat
+                    // after the page finishes, so poll briefly.
+                    for _ in 0..6 {
+                        let cookie = read_login_cookies(&app, LOGIN_LABEL).await;
+                        if innertube::cookie_sapisid(&cookie).is_some() {
+                            match state.sign_in(cookie, None).await {
+                                Ok(SignInOutcome::Complete) => {
+                                    let _ = app.emit("login-done", ());
+                                }
+                                // The authenticated cookie is saved, but the account remains
+                                // deliberately unfinished until the main-window picker selects a
+                                // server-issued delegated identity.
+                                Ok(SignInOutcome::SelectionRequired) => {}
+                                Err(e) => {
+                                    let _ = app.emit("login-error", e);
+                                }
+                            }
+                            close_login(&app);
+                            return;
+                        }
+                        tokio::time::sleep(Duration::from_millis(500)).await;
+                    }
+                    // Landed on music.youtube.com but not authenticated yet — keep watching.
                 }
             });
-        let builder = match LOGIN_UA {
-            Some(ua) => builder.user_agent(ua),
-            None => builder,
-        };
-        match crate::http::proxied(builder).build() {
-            Ok(win) => no_webgl(&win),
-            Err(e) => {
-                let _ = app2.emit("login-error", format!("Couldn't open the sign-in window: {e}"));
-            }
         }
-    });
-    if let Err(e) = dispatched {
-        let _ = app.emit("login-error", format!("Couldn't open the sign-in window: {e}"));
+
+        // Window creation must happen on the main thread (GTK).
+        let app2 = app.clone();
+        let dispatched = app.run_on_main_thread(move || {
+            // Reclaim the label if a prior login window is still around.
+            if let Some(w) = app2.get_webview_window(LOGIN_LABEL) {
+                let _ = w.destroy();
+            }
+            // Add-account flow: sign the *webview* out of Google first, so the fresh sign-in is the
+            // webview's only session and music.youtube.com lands on the new account instead of
+            // auto-continuing into whichever one it was already holding. The app's own saved sessions
+            // live in SQLite (`accounts`), not in this cookie store, so they are never touched here.
+            if add_account {
+                if let Err(e) = clear_google_webview_cookies(&app2) {
+                    let _ = app2
+                        .emit("login-error", format!("Couldn't clear the previous session: {e}"));
+                    return;
+                }
+            }
+            let url = if add_account { ADD_ACCOUNT_URL } else { LOGIN_URL };
+            let Ok(url) = tauri::Url::parse(url) else { return };
+            let builder = WebviewWindowBuilder::new(&app2, LOGIN_LABEL, WebviewUrl::External(url))
+                .title("Sign in to YouTube Music")
+                .inner_size(480.0, 720.0)
+                .on_page_load(move |_w, payload| {
+                    if matches!(payload.event(), PageLoadEvent::Finished)
+                        && payload.url().host_str() == Some("music.youtube.com")
+                    {
+                        let _ = tx.send(());
+                    }
+                });
+            let builder = match LOGIN_UA {
+                Some(ua) => builder.user_agent(ua),
+                None => builder,
+            };
+            match crate::http::proxied(builder).build() {
+                Ok(win) => no_webgl(&win),
+                Err(e) => {
+                    let _ =
+                        app2.emit("login-error", format!("Couldn't open the sign-in window: {e}"));
+                }
+            }
+        });
+        if let Err(e) = dispatched {
+            let _ = app.emit("login-error", format!("Couldn't open the sign-in window: {e}"));
+        }
     }
 }
 
@@ -181,89 +191,98 @@ fn no_webgl(win: &tauri::WebviewWindow) {
 /// Nothing is emitted on failure: the user is already looking at "sign in again", and a webview
 /// session that has genuinely expired leaves them exactly where they were.
 pub async fn refresh_session(app: AppHandle, state: Arc<AppState>) {
-    if !state.it.is_logged_in() || !claim_refresh() {
+    #[cfg(target_os = "android")]
+    {
+        let _ = (app, state);
         return;
     }
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<()>();
-    let app2 = app.clone();
-    let dispatched = app.run_on_main_thread(move || {
-        if let Some(w) = app2.get_webview_window(REFRESH_LABEL) {
-            let _ = w.destroy();
+
+    #[cfg(not(target_os = "android"))]
+    {
+        if !state.it.is_logged_in() || !claim_refresh() {
+            return;
         }
-        let Ok(url) = tauri::Url::parse(REFRESH_URL) else { return };
-        // Not 1x1 like the cipher harness: this is a real page, and YouTube's own startup is what
-        // makes Google hand out the rotated cookies.
-        #[allow(unused_mut)]
-        let mut builder =
-            WebviewWindowBuilder::new(&app2, REFRESH_LABEL, WebviewUrl::External(url))
-                .title("YouTube Music")
-                .visible(false)
-                .inner_size(1024.0, 768.0);
-        #[cfg(not(target_os = "android"))]
-        {
-            builder = builder.skip_taskbar(true).decorations(false).focused(false);
-        }
-        let builder = match LOGIN_UA {
-            Some(ua) => builder.user_agent(ua),
-            None => builder,
-        };
-        let builder = builder.on_page_load(move |_w, payload| {
-            if matches!(payload.event(), PageLoadEvent::Finished)
-                && payload.url().host_str() == Some("music.youtube.com")
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<()>();
+        let app2 = app.clone();
+        let dispatched = app.run_on_main_thread(move || {
+            if let Some(w) = app2.get_webview_window(REFRESH_LABEL) {
+                let _ = w.destroy();
+            }
+            let Ok(url) = tauri::Url::parse(REFRESH_URL) else { return };
+            // Not 1x1 like the cipher harness: this is a real page, and YouTube's own startup is what
+            // makes Google hand out the rotated cookies.
+            #[allow(unused_mut)]
+            let mut builder =
+                WebviewWindowBuilder::new(&app2, REFRESH_LABEL, WebviewUrl::External(url))
+                    .title("YouTube Music")
+                    .visible(false)
+                    .inner_size(1024.0, 768.0);
+            #[cfg(not(target_os = "android"))]
             {
-                let _ = tx.send(());
+                builder = builder.skip_taskbar(true).decorations(false).focused(false);
+            }
+            let builder = match LOGIN_UA {
+                Some(ua) => builder.user_agent(ua),
+                None => builder,
+            };
+            let builder = builder.on_page_load(move |_w, payload| {
+                if matches!(payload.event(), PageLoadEvent::Finished)
+                    && payload.url().host_str() == Some("music.youtube.com")
+                {
+                    let _ = tx.send(());
+                }
+            });
+            match crate::http::proxied(builder).build() {
+                Ok(win) => no_webgl(&win),
+                Err(e) => tracing::warn!(error = %e, "could not open the session-refresh webview"),
             }
         });
-        match crate::http::proxied(builder).build() {
-            Ok(win) => no_webgl(&win),
-            Err(e) => tracing::warn!(error = %e, "could not open the session-refresh webview"),
+        if dispatched.is_err() {
+            return;
         }
-    });
-    if dispatched.is_err() {
-        return;
-    }
 
-    // `None` here is the build having failed (the sender was dropped), not a slow page.
-    if !matches!(tokio::time::timeout(REFRESH_TIMEOUT, rx.recv()).await, Ok(Some(()))) {
-        tracing::debug!("session refresh: the webview never reached music.youtube.com");
-        close(&app, REFRESH_LABEL);
-        return;
-    }
-
-    // Landing on the page and *having rotated* are not the same instant, so poll. Signing in with
-    // a jar identical to the one we already hold would only spend two requests to be told the same
-    // thing, so wait for a different one.
-    //
-    //
-    // The jar must also still belong to the account being healed. The webview holds one Google
-    // session at a time and "Add account" replaces it, so after a switch back to an earlier saved
-    // account it is a *different* account's session sitting there; signing in with it would move
-    // the app to that account behind the user's back. That account is then simply not refreshable
-    // from here, and the user signs in with it again.
-    // Re-read the live jar every pass rather than snapshotting it: a switch or a sign-out landing
-    // mid-poll would otherwise leave the loop still hunting for the account it started on and
-    // sign back into it behind the user.
-    for _ in 0..8 {
-        let current = state.it.cookie().unwrap_or_default();
-        let Some(account) = innertube::cookie_sapisid(&current) else {
+        // `None` here is the build having failed (the sender was dropped), not a slow page.
+        if !matches!(tokio::time::timeout(REFRESH_TIMEOUT, rx.recv()).await, Ok(Some(()))) {
+            tracing::debug!("session refresh: the webview never reached music.youtube.com");
             close(&app, REFRESH_LABEL);
             return;
-        };
-        let cookie = read_login_cookies(&app, REFRESH_LABEL).await;
-        if innertube::cookie_sapisid(&cookie) == Some(account) && !same_jar(&cookie, &current) {
-            // The switch could still land during the export above, so the account is checked once
-            // more under `AppState::auth`, where nothing can move underneath it.
-            match state.sign_in(cookie, Some(account)).await {
-                Ok(_) => tracing::info!("re-minted the login session from the login webview"),
-                Err(error) => tracing::warn!(%error, "could not re-mint the login session"),
+        }
+
+        // Landing on the page and *having rotated* are not the same instant, so poll. Signing in with
+        // a jar identical to the one we already hold would only spend two requests to be told the same
+        // thing, so wait for a different one.
+        //
+        //
+        // The jar must also still belong to the account being healed. The webview holds one Google
+        // session at a time and "Add account" replaces it, so after a switch back to an earlier saved
+        // account it is a *different* account's session sitting there; signing in with it would move
+        // the app to that account behind the user's back. That account is then simply not refreshable
+        // from here, and the user signs in with it again.
+        // Re-read the live jar every pass rather than snapshotting it: a switch or a sign-out landing
+        // mid-poll would otherwise leave the loop still hunting for the account it started on and
+        // sign back into it behind the user.
+        for _ in 0..8 {
+            let current = state.it.cookie().unwrap_or_default();
+            let Some(account) = innertube::cookie_sapisid(&current) else {
+                close(&app, REFRESH_LABEL);
+                return;
+            };
+            let cookie = read_login_cookies(&app, REFRESH_LABEL).await;
+            if innertube::cookie_sapisid(&cookie) == Some(account) && !same_jar(&cookie, &current) {
+                // The switch could still land during the export above, so the account is checked once
+                // more under `AppState::auth`, where nothing can move underneath it.
+                match state.sign_in(cookie, Some(account)).await {
+                    Ok(_) => tracing::info!("re-minted the login session from the login webview"),
+                    Err(error) => tracing::warn!(%error, "could not re-mint the login session"),
+                }
+                close(&app, REFRESH_LABEL);
+                return;
             }
-            close(&app, REFRESH_LABEL);
-            return;
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        tracing::debug!("session refresh: the login webview had nothing fresher to offer");
+        close(&app, REFRESH_LABEL);
     }
-    tracing::debug!("session refresh: the login webview had nothing fresher to offer");
-    close(&app, REFRESH_LABEL);
 }
 
 /// Same cookies, whatever order they came out in. The stored header is rebuilt by two different

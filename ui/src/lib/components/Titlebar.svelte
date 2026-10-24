@@ -187,8 +187,10 @@
 	<div class="flex h-full items-center">
 		<!-- Account first, then the integrations, then the window controls. The drag region lives on
 		     <header> only, so these children are ordinary buttons — don't add the attribute here. -->
-		<AccountMenu />
-		<div class="mx-1.5 h-4 w-px bg-border"></div>
+		{#if !prefs.isAndroid}
+			<AccountMenu />
+			<div class="mx-1.5 h-4 w-px bg-border"></div>
+		{/if}
 
 		<!-- Paste a YouTube Music link and go to it: the only way into a playlist that is shared by
 		     link and never appears in search or the library (#63). -->

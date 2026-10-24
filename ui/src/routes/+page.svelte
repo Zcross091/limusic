@@ -29,6 +29,7 @@
 		adoptHomeKinds,
 		personal,
 		playback,
+		prefs,
 		seedOnRepeatPick,
 		toast
 	} from '$lib/player.svelte';
@@ -502,11 +503,11 @@
 				<div class="flex flex-col items-center gap-3 py-20 text-center">
 					<HugeiconsIcon icon={MusicNote01Icon} class="h-8 w-8 text-muted-foreground/40" />
 					<p class="max-w-sm text-sm text-muted-foreground">
-						{auth.account?.signedIn
+						{auth.account?.signedIn || prefs.isAndroid
 							? t('home.feed_empty')
 							: t('home.signed_out_hint')}
 					</p>
-					{#if auth.account?.signedIn}
+					{#if auth.account?.signedIn || prefs.isAndroid}
 						<Button variant="outline" size="sm" onclick={() => load(selected)}>{t('common.try_again')}</Button>
 					{:else}
 						<Button size="sm" onclick={() => api.loginWebview()}>{t('common.sign_in_google')}</Button>
