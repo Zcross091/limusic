@@ -2,25 +2,26 @@
 
 <img src="./assets/docs/limusic-github-image.png" alt="Limusic Banner" width="100%">
 
-# Limusic
+# Limusic (Android & Desktop)
 
-**A native desktop & mobile YouTube Music client. Rust + Tauri 2, ad-free, no Electron.**
+**A native mobile & desktop YouTube Music client. Rust + Tauri 2, ad-free, no Electron.**
 
 <p align="center">
-  <a href="https://github.com/SimoHypers/limusic/releases/latest"><img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/SimoHypers/limusic/total?style=for-the-badge&label=DOWNLOADS&color=a4c400"></a>
-  <a href="https://github.com/SimoHypers/limusic/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/SimoHypers/limusic?display_name=release&style=for-the-badge&color=a10935"></a>
-  <img alt="License" src="https://img.shields.io/github/license/SimoHypers/limusic?style=for-the-badge&color=1881cc">
-  <a href="https://hosted.weblate.org/engage/limusic/"><img alt="Translation status" src="https://img.shields.io/weblate/progress/limusic?server=https%3A%2F%2Fhosted.weblate.org&style=for-the-badge&label=TRANSLATED&color=6a3fb5"></a>
-  <a href="https://simohypers.github.io/limusic/"><img alt="Website" src="https://img.shields.io/badge/WEBSITE-limusic-e5486e?style=for-the-badge"></a>
-  <a href="https://ko-fi.com/simohypers"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/KO--FI-support-ff5e5b?style=for-the-badge&logo=kofi&logoColor=white"></a>
+  <a href="https://github.com/Zcross091/limusic/releases/latest"><img alt="Download Android APK" src="https://img.shields.io/badge/Download-Android_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white"></a>
+  <a href="https://github.com/Zcross091/limusic/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/Zcross091/limusic?display_name=release&style=for-the-badge&color=a10935"></a>
+  <a href="https://github.com/Zcross091/limusic/releases/latest"><img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/Zcross091/limusic/total?style=for-the-badge&label=DOWNLOADS&color=a4c400"></a>
+  <img alt="License" src="https://img.shields.io/github/license/Zcross091/limusic?style=for-the-badge&color=1881cc">
   <br>
-  <img alt="Linux" src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black">
-  <img alt="Windows" src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logoColor=white">
-  <img alt="macOS" src="https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white">
   <img alt="Android" src="https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logoColor=white">
+  <img alt="Linux" src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black">
+  <img alt="macOS" src="https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white">
   <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri_2-24C8D8?style=for-the-badge&logo=tauri&logoColor=white">
   <img alt="Rust" src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white">
 </p>
+
+> [!NOTE]
+> This repository is an active community edition of [SimoHypers/limusic](https://github.com/SimoHypers/limusic) that provides full **Android mobile support** (Google Jetpack Media3 ExoPlayer background playback, lock screen controls, MediaSession integration) while staying continuously synchronized with upstream desktop features and fixes.
 
 **Limusic** talks directly to YouTube's internal API with zero browser bloat, no backend server, and no ads in the audio. It delivers high-fidelity audio on Desktop (powered by libmpv) and Android devices (powered by Google Media3 & ExoPlayer with foreground background service), sharing the same lightning-fast SvelteKit UI and pure-Rust engine.
 
@@ -83,21 +84,17 @@ Limusic on Android provides a first-class mobile listening experience engineered
 <h2 align="center">Download & Install</h2>
 
 <p align="center">
-  <a href="https://github.com/SimoHypers/limusic/releases/latest">
-    <img src="https://img.shields.io/badge/GitHub_Releases-100000?style=for-the-badge&logo=github&logoColor=white" height="40">
+  <a href="https://github.com/Zcross091/limusic/releases/latest">
+    <img src="https://img.shields.io/badge/Download_Latest_Release-100000?style=for-the-badge&logo=github&logoColor=white" height="40">
   </a>
 </p>
 
-| Platform | File | Notes |
+| Platform | Download | Architecture / Details |
 |---|---|---|
-| Android | `.apk` | Universal & arm64-v8a builds for Android 8.0+ (API 26+). Native Media3 ExoPlayer background playback |
-| Windows | `-setup.exe` | Self-updating |
-| Windows | `.msi` | Plain installer, no auto-update |
-| Linux | `.AppImage` | Self-updating, libmpv bundled. Needs glibc 2.39+ (Ubuntu 24.04+, Debian 13+, Fedora 40+) |
-| Linux (Ubuntu/Debian) | `.deb` | No self-update. Needs Ubuntu 24.04+ / Debian 13+; apt pulls libmpv and webkit2gtk in for you |
-| Linux (Fedora/RHEL) | `.rpm` | Needs `mpv-libs` installed (`sudo dnf install mpv-libs`). No updates, redownload each release |
-| macOS (Apple Silicon) | `.dmg` | Self-updating. Unsigned, so the first launch needs `xattr -dr com.apple.quarantine /Applications/limusic.app` |
-| macOS (Intel) | none | Build from source, see [docs/BUILD-PLATFORMS.md](docs/BUILD-PLATFORMS.md) |
+| **Android** 📱 | **[`app-universal-release.apk`](https://github.com/Zcross091/limusic/releases/latest)** | Universal APK (`arm64-v8a`, `armeabi-v7a`, `x86_64`) for Android 8.0+ (API 26+). Native Media3 ExoPlayer background playback & lock screen controls |
+| **Windows** 🪟 | **[`limusic-x64-setup.exe`](https://github.com/Zcross091/limusic/releases/latest)** | 64-bit installer with self-update support |
+| **Linux** 🐧 | **[`limusic-amd64.AppImage`](https://github.com/Zcross091/limusic/releases/latest)** / **[`.deb`](https://github.com/Zcross091/limusic/releases/latest)** | Self-updating AppImage (libmpv bundled) or Debian/Ubuntu package |
+| **macOS** 🍎 | **[`limusic-macos-arm64.dmg`](https://github.com/Zcross091/limusic/releases/latest)** | Apple Silicon DMG |
 
 Community-maintained repositories, packaged and updated by their maintainers rather than by this project:
 
